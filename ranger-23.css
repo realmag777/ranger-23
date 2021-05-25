@@ -86,3 +86,15 @@
     right: 2px;
 }
 
+.ranger23-handler-left-disabled{
+    background: #c1e1ff;
+    background: repeating-linear-gradient(
+        135deg,
+        #c1e1ff,
+        #c1e1ff 2px,
+        #92bce0 2px,
+        #92bce0 4px
+        ) !important;
+}
+
+

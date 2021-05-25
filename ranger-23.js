@@ -1,7 +1,21 @@
+/**
+ * @summary     Ranger23
+ * @description range slider
+ * @version     1.0.2
+ * @file        ranger-23
+ * @author      realmag777
+ * @contact     https://pluginus.net/contact-us/
+ * @github      https://github.com/realmag777/ranger-23
+ * @copyright   Copyright 2021 Rostislav Sofronov
+ *
+ * This source file is free software, available under the following license:
+ *   MIT license - https://en.wikipedia.org/wiki/MIT_License .Basically that
+ * means you are free to use Selectron23 as long as this header is left intact.
+ */
 'use strict';
-//created by realmag777
+
 class Ranger23 {
-    constructor(track, cast_id = null, handler_width = 30) {
+    constructor(track, cast_id = null, handler_width = 30, additional_options = {}) {
         this.cast_id = cast_id;
         if (!this.cast_id) {
             this.cast_id = 'slider-' + (new Date()).getTime();
@@ -10,10 +24,11 @@ class Ranger23 {
         this.dragged = null;
         this.track = track;
         this.handler_width = handler_width;
+        this.additional_options = additional_options;
         this.min = parseInt(this.track.dataset.min);
         this.max = parseInt(this.track.dataset.max);
-        this.prev_selected_left_val =this.selected_left_val = parseInt(this.track.dataset.selectedMin);
-        this.prev_selected_right_val =this.selected_right_val = parseInt(this.track.dataset.selectedMax);
+        this.prev_selected_left_val = this.selected_left_val = parseInt(this.track.dataset.selectedMin);
+        this.prev_selected_right_val = this.selected_right_val = parseInt(this.track.dataset.selectedMax);
 
         this.is_mobile = 'ontouchstart' in document.documentElement,
                 this.event_click = this.is_mobile ? 'click' : 'click',
@@ -28,6 +43,18 @@ class Ranger23 {
         this.handler_left = document.createElement('div');
         this.handler_left.className = 'ranger23-handler-left';
         this.handler_left.innerHTML = '<span></span>';
+
+        this.disable_handler_left = false;
+        if ('disable_handler_left' in this.additional_options) {
+            if (this.additional_options.disable_handler_left) {
+                this.disable_handler_left = true;
+            }
+        }
+
+        if (this.disable_handler_left) {
+            this.handler_left.classList.add('ranger23-handler-left-disabled');
+        }
+
 
         this.handler_right = document.createElement('div');
         this.handler_right.className = 'ranger23-handler-right';
@@ -60,6 +87,12 @@ class Ranger23 {
         window.addEventListener('resize', (e) => {
             this.resize();
         });
+
+        //fix for tabs, 13-05-2021
+        setTimeout(() => {
+            this.resize();
+        }, 123);
+
     }
 
     resize() {
@@ -91,11 +124,13 @@ class Ranger23 {
 
     init_events() {
 
-        this.handler_min.addEventListener(this.event_click, (e) => {
-            this.handler_left.style.left = 0;
-            this.handler_left.querySelector('span').innerHTML = this.selected_left_val = this.min;
-            this.cast();
-        });
+        if (!this.disable_handler_left) {
+            this.handler_min.addEventListener(this.event_click, (e) => {
+                this.handler_left.style.left = 0;
+                this.handler_left.querySelector('span').innerHTML = this.selected_left_val = this.min;
+                this.cast();
+            });
+        }
 
         this.handler_max.addEventListener(this.event_click, (e) => {
             this.handler_right.style.left = this.container_width - this.handler_width + 'px';
@@ -110,20 +145,23 @@ class Ranger23 {
         });
 
 
-        this.handler_left.addEventListener(this.event_mousedown, (e) => {
-            this.dragged = e.target.parentElement;
-            this.dragged.style.zIndex = 2;
-        });
+        if (!this.disable_handler_left) {
+            this.handler_left.addEventListener(this.event_mousedown, (e) => {
+                this.dragged = e.target.parentElement;
+                this.dragged.style.zIndex = 2;
+            });
 
+            this.handler_left.addEventListener(this.event_mousemove, (e) => {
+                this.__reset_handlers_view_values();
+            });
+        }
 
         this.handler_right.addEventListener(this.event_mousemove, (e) => {
             this.__reset_handlers_view_values();
         });
 
 
-        this.handler_left.addEventListener(this.event_mousemove, (e) => {
-            this.__reset_handlers_view_values();
-        });
+
 
 
         this.container.addEventListener(this.event_mouseout, (e) => {
@@ -133,6 +171,11 @@ class Ranger23 {
 
         document.addEventListener(this.event_mousemove, (e) => {
             if (this.dragged && this.container) {
+
+                if (this.additional_options.instant_cast) {
+                    this.cast();
+                }
+
                 let page_x = e.pageX - this.handler_width / 2;//for on handler mouse pointer centrating
 
                 if (this.is_mobile) {
@@ -184,7 +227,9 @@ class Ranger23 {
                 this.dragged = null;
 
                 if (this.is_mobile) {
-                    this.handler_min.innerHTML = this.min;
+                    if (!this.disable_handler_left) {
+                        this.handler_min.innerHTML = this.min;
+                    }
                     this.handler_max.innerHTML = this.max;
                 }
 
@@ -205,7 +250,7 @@ class Ranger23 {
             if (e.target === this.container && !this.dragged) {
                 let left_distance = e.clientX - this.container_x;
 
-                if (left_distance < this.handler_left.offsetLeft) {
+                if (left_distance < this.handler_left.offsetLeft && !this.disable_handler_left) {
                     this.handler_left.querySelector('span').innerHTML = this.calculate_left_value(left_distance);
                 }
 
@@ -222,7 +267,7 @@ class Ranger23 {
             if (e.target === this.container && !this.dragged) {
                 let left_distance = e.clientX - this.container_x;
 
-                if (left_distance < this.handler_left.offsetLeft) {
+                if (left_distance < this.handler_left.offsetLeft && !this.disable_handler_left) {
                     this.handler_left.querySelector('span').innerHTML = this.selected_left_val = this.calculate_left_value(left_distance);
                     this.handler_left.style.left = left_distance + 'px';
                 }
@@ -245,15 +290,18 @@ class Ranger23 {
             if (e.target === this.bar && !this.dragged) {
                 let left_distance = e.clientX - this.container_x;
 
-                if (left_distance > this.handler_left.offsetLeft && left_distance < this.handler_right.offsetLeft) {
+                if (!this.disable_handler_left) {
+                    if (left_distance > this.handler_left.offsetLeft && left_distance < this.handler_right.offsetLeft) {
 
-                    if ((left_distance - this.handler_left.offsetLeft - this.handler_width) < (this.handler_right.offsetLeft - left_distance)) {
-                        left_distance -= this.handler_width;
-                        this.handler_left.querySelector('span').innerHTML = this.calculate_left_value(left_distance);
-                    } else {
-                        this.handler_right.querySelector('span').innerHTML = this.calculate_right_value(left_distance);
+                        if ((left_distance - this.handler_left.offsetLeft - this.handler_width) < (this.handler_right.offsetLeft - left_distance)) {
+                            left_distance -= this.handler_width;
+                            this.handler_left.querySelector('span').innerHTML = this.calculate_left_value(left_distance);
+                        } else {
+                            this.handler_right.querySelector('span').innerHTML = this.calculate_right_value(left_distance);
+                        }
                     }
-
+                } else {
+                    this.handler_right.querySelector('span').innerHTML = this.calculate_right_value(left_distance);
                 }
 
             }
@@ -270,17 +318,22 @@ class Ranger23 {
             if (e.target === this.bar && !this.dragged) {
                 let left_distance = e.clientX - this.container_x;
 
-                if (left_distance > this.handler_left.offsetLeft && left_distance < this.handler_right.offsetLeft) {
+                if (!this.disable_handler_left) {
+                    if (left_distance > this.handler_left.offsetLeft && left_distance < this.handler_right.offsetLeft) {
 
-                    if ((left_distance - this.handler_left.offsetLeft - this.handler_width) < (this.handler_right.offsetLeft - left_distance)) {
-                        left_distance -= this.handler_width;
-                        this.handler_left.querySelector('span').innerHTML = this.selected_left_val = this.calculate_left_value(left_distance);
-                        this.handler_left.style.left = left_distance + 'px';
-                    } else {
-                        this.handler_right.querySelector('span').innerHTML = this.selected_right_val = this.calculate_right_value(left_distance);
-                        this.handler_right.style.left = left_distance + 'px';
+                        if ((left_distance - this.handler_left.offsetLeft - this.handler_width) < (this.handler_right.offsetLeft - left_distance)) {
+                            left_distance -= this.handler_width;
+                            this.handler_left.querySelector('span').innerHTML = this.selected_left_val = this.calculate_left_value(left_distance);
+                            this.handler_left.style.left = left_distance + 'px';
+                        } else {
+                            this.handler_right.querySelector('span').innerHTML = this.selected_right_val = this.calculate_right_value(left_distance);
+                            this.handler_right.style.left = left_distance + 'px';
+                        }
+
                     }
-
+                } else {
+                    this.handler_right.querySelector('span').innerHTML = this.selected_right_val = this.calculate_right_value(left_distance);
+                    this.handler_right.style.left = left_distance + 'px';
                 }
 
                 this.cast();
@@ -318,7 +371,7 @@ class Ranger23 {
         if (this.dragged === this.handler_left) {
             this.handler_left.querySelector('span').innerHTML = this.selected_left_val = this.calculate_left_value(left_distance);
 
-            if (this.is_mobile) {
+            if (this.is_mobile && !this.disable_handler_left) {
                 this.handler_min.innerHTML = this.selected_left_val;
             }
         }
@@ -358,8 +411,8 @@ class Ranger23 {
 
         if (this.prev_selected_left_val !== this.selected_left_val || this.prev_selected_right_val !== this.selected_right_val) {
             //cast only if range values are changed
-            this.prev_selected_left_val=this.selected_left_val;
-            this.prev_selected_right_val=this.selected_right_val;
+            this.prev_selected_left_val = this.selected_left_val;
+            this.prev_selected_right_val = this.selected_right_val;
 
             document.dispatchEvent(new CustomEvent('ranger23-update', {detail: {
                     cast_id: this.cast_id,
@@ -374,6 +427,12 @@ class Ranger23 {
 
     remove() {
         this.container.remove();
+    }
+
+    set_right(value) {
+        this.selected_right_val = this.track.dataset.selectedMax = parseInt(value);
+        this.init_math();
+        this.cast();
     }
 
 }
